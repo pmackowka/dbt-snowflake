@@ -1,0 +1,19 @@
+# Szablon połączenia ze Snowflake.
+# Skopiuj do profiles.yml (plik jest w .gitignore) albo do ~/.dbt/profiles.yml.
+# Wymagane zmienne środowiskowe:
+#   export SNOWFLAKE_ACCOUNT="xy12345.us-east-2.aws"
+#   export SNOWFLAKE_USER="dbt"
+#   export SNOWFLAKE_PASSWORD="..."
+snowflake_project: # musi pasować do `profile:` w dbt_project.yml
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: TRANSFORM
+      database: AIRBNB
+      warehouse: COMPUTE_WH
+      schema: DEV
+      threads: 1
