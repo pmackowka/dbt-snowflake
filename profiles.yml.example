@@ -1,9 +1,17 @@
 # Szablon połączenia ze Snowflake.
 # Skopiuj do profiles.yml (plik jest w .gitignore) albo do ~/.dbt/profiles.yml.
+#
+# Autoryzacja: para kluczy RSA (key-pair), nie hasło. To nie moja preferencja - tak provisionuje
+# usera "dbt" oficjalne repo tego kursu (TYPE=SERVICE + RSA_PUBLIC_KEY), bo to standardowa metoda
+# Snowflake dla kont serwisowych/automatyzacji: klucz prywatny nie wygasa jak sesja logowania,
+# działa wszędzie (CI/CD, inny laptop) i widać go jawnie jako uprawnienie w Snowflake, a nie w
+# czyimś haśle. Generowanie klucza i provisioning usera -> README.md -> Setup -> 1. Snowflake.
+#
 # Wymagane zmienne środowiskowe:
 #   export SNOWFLAKE_ACCOUNT="xy12345.us-east-2.aws"
 #   export SNOWFLAKE_USER="dbt"
-#   export SNOWFLAKE_PASSWORD="..."
+#   export SNOWFLAKE_PRIVATE_KEY_PATH="/sciezka/do/klucza/rsa_key.p8"   # POZA folderem repo
+#   export SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=""                          # puste, jeśli klucz bez hasła
 snowflake_project: # musi pasować do `profile:` w dbt_project.yml
   target: dev
   outputs:
@@ -11,7 +19,8 @@ snowflake_project: # musi pasować do `profile:` w dbt_project.yml
       type: snowflake
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
       user: "{{ env_var('SNOWFLAKE_USER') }}"
-      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PASSPHRASE', '') }}"
       role: TRANSFORM
       database: AIRBNB
       warehouse: COMPUTE_WH

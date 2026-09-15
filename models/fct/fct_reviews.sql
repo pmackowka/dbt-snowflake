@@ -1,3 +1,4 @@
+{# Fct (incremental, on_schema_change='fail'): recenzje z surrogate key, wspiera ręczny backfill przez --vars start_date/end_date #}
 {{
   config(
     materialized = 'incremental',

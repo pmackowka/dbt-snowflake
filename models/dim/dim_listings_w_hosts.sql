@@ -1,3 +1,4 @@
+{# Dim (table, dziedziczy z folderu dim/): łączy dim_listings_cleansed z dim_hosts_cleansed, GREATEST() (Snowflake) do updated_at #}
 WITH
 l AS (
     SELECT

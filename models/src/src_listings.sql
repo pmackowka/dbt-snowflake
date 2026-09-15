@@ -1,3 +1,4 @@
+{# Staging (ephemeral - folder src/ ma +materialized: ephemeral w dbt_project.yml): oferty Airbnb z AIRBNB.RAW.RAW_LISTINGS #}
 WITH raw_listings AS (
  SELECT
  *

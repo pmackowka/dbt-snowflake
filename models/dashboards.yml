@@ -1,3 +1,8 @@
+# Exposures - deklaracja, że zewnętrzny artefakt (dashboard) zależy od modeli dbt. Nie materializuje
+# się jak model, ale trafia do grafu lineage w wygenerowanej dokumentacji (dbt docs generate) -
+# dzięki temu widać z góry, co się zepsuje downstream, jeśli zmienisz dim_listings_w_hosts albo
+# full_moon_reviews. url/owner poniżej to placeholdery - w kursie to działający dashboard Preset.io
+# podpięty pod rolę REPORTER (patrz README.md -> Setup -> 1. Snowflake, sekcja o roli REPORTER).
 version: 2
 
 exposures:
@@ -5,14 +10,13 @@ exposures:
     label: Executive Dashboard
     type: dashboard
     maturity: low
-    url: https://00d200da.us1a.app.preset.io/superset/dashboard/123
+    url: https://example.preset.io/superset/dashboard/123
     description: Executive Dashboard about Airbnb listings and hosts
-
 
     depends_on:
       - ref('dim_listings_w_hosts')
       - ref('full_moon_reviews')
 
     owner:
-      name: Piotr
-      email: piotr@gmail.com
+      name: Analytics team
+      email: analytics@my-company.com

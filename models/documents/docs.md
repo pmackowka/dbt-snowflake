@@ -1,3 +1,5 @@
+<!-- Blok dokumentacji wielokrotnego użytku (doc()). Odwołanie: description: '{{ doc("...") }}'
+     w models/schema.yml (kolumna minimum_nights modelu dim_listings_cleansed). -->
 {% docs dim_listing_cleansed__minimum_nights %}
 Minimum number of nights required to rent this property.
 

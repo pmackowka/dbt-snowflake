@@ -1,3 +1,4 @@
+{# Staging (ephemeral): recenzje z AIRBNB.RAW.RAW_REVIEWS, źródło dla fct_reviews (model incremental) #}
 WITH raw_reviews AS (
  SELECT
  *

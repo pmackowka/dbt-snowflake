@@ -1,4 +1,8 @@
 
+# Główny plik konfiguracyjny projektu dbt: nazwa, profil, ścieżki folderów, domyślna
+# materializacja PER FOLDER (view/table/ephemeral), hook post-hook nadający dostęp roli
+# REPORTER (patrz README.md -> Setup -> 1. Snowflake) i zmienna user_name (macros/*variable*).
+
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
@@ -33,6 +37,8 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   snowflake_project:
     +materialized: view  # domyślnie wszystko jako `view`
+    # post-hook uruchamia się automatycznie po zbudowaniu KAŻDEGO modelu - bez tego trzeba by
+    # ręcznie odtwarzać GRANT po każdym dbt run, bo dbt nadpisuje/tworzy obiekty od nowa
     +post-hook:
       - "GRANT SELECT ON {{ this }} TO ROLE REPORTER"
     dim:

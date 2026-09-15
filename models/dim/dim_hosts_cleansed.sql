@@ -1,3 +1,4 @@
+{# Dim (table): czyszczenie gospodarzy - NVL (Snowflake, odpowiednik COALESCE) zamienia brak nazwy na 'Anonymous' #}
 WITH src_hosts AS (
     SELECT
         *

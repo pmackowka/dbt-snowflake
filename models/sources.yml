@@ -1,3 +1,7 @@
+# Definicja source() - surowych tabel w schemacie AIRBNB.RAW (patrz README.md -> Setup -> 1.
+# Snowflake -> import danych z S3). identifier: pozwala nazwać źródło inaczej niż fizyczna nazwa
+# tabeli w bazie (przyjazne "listings" zamiast "raw_listings") - modele odwołują się przez
+# source('airbnb', 'listings'), nie przez surową nazwę tabeli.
 version: 2
 
 sources:
@@ -12,7 +16,8 @@ sources:
 
       - name: reviews
         identifier: raw_reviews
-        loaded_at_field: date
-        freshness:
-          warn_after: {count: 1, period: hour}
-          error_after: {count: 24, period: hour}
+        config:
+          loaded_at_field: date
+          freshness:
+            warn_after: {count: 1, period: hour}
+            error_after: {count: 24, period: hour}

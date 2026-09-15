@@ -1,3 +1,4 @@
+{# Snapshot SCD2, strategia timestamp + invalidate_hard_deletes: śledzi zmiany raw_hosts w czasie #}
 {% snapshot scd_raw_hosts %}
 
 {{

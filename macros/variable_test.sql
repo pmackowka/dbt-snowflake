@@ -1,3 +1,9 @@
+{#
+	Makro typu 3 (operacja) - rozszerza macros/logging.sql o zmienne dbt (notatka, sekcja 12).
+	{% set your_name = ... %} to zmienna lokalna, na sztywno w kodzie. var("user_name", default)
+	to zmienna PROJEKTU, nadpisywalna z CLI bez zmiany kodu - patrz przykładowe wywołania
+	i realny output w komentarzu na dole pliku.
+#}
 {% macro logging_and_variables() %}
     {{ log("Call your mom!") }}
     {{ log("Call your mom!", info=True) }}

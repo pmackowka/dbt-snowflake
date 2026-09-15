@@ -1,3 +1,4 @@
+{# Analysis (tylko dbt compile, bez materializacji): sentyment recenzji w podziale na pełnię/nie-pełnię #}
 WITH fullmoon_reviews AS (
     SELECT * FROM {{ ref('full_moon_reviews') }}
 )

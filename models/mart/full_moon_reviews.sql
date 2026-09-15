@@ -1,3 +1,4 @@
+{# Mart (table): fct_reviews + seed_full_moon_dates - oznacza recenzje z nocy po pełni #}
 {{ config(
   materialized = 'table',
 ) }}

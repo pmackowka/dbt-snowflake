@@ -1,3 +1,4 @@
+{# Dim (table): czyszczenie ofert - minimum_nights=0 -> 1, price_str -> NUMBER przez rzutowanie :: (składnia Snowflake) #}
 WITH src_listings AS (
   SELECT
     *

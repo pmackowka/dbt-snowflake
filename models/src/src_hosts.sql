@@ -1,3 +1,4 @@
+{# Staging (ephemeral): gospodarze z AIRBNB.RAW.RAW_HOSTS, źródło dla dim_hosts_cleansed #}
 WITH raw_hosts AS (
  SELECT
  *
