@@ -1,3 +1,12 @@
+# Plik generowany automatycznie przez `dbt deps` - zapisuje DOKŁADNE, przetestowane wersje
+# pakietów, w tym zależności TRANZYTYWNE (dbt_date poniżej nie jest w packages.yml wprost -
+# to zależność samego dbt_expectations, dbt deps rozwiązuje ją automatycznie). Commitowany
+# celowo (jak package-lock.json w npm), żeby `dbt deps` na innym komputerze zainstalował
+# identyczne wersje, nie cokolwiek najnowszego pasującego do zakresu w packages.yml.
+#
+# `dbt deps` NIE nadpisuje tego pliku, dopóki packages.yml się nie zmieni (sha1_hash poniżej to
+# hash zawartości packages.yml) - ten komentarz przetrwa zwykłe `dbt deps`, zniknie dopiero przy
+# faktycznej zmianie wersji pakietu.
 packages:
   - name: dbt_utils
     package: dbt-labs/dbt_utils

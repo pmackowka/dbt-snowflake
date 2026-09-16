@@ -6,8 +6,9 @@
 	komentarza Jinja {# #} (patrz linia niżej).
 #}
 {% macro learn_logging() %}
-    {{ log("Call your mom!") }}
-    {{ log("Call your dad!", info=True) }} --> Logs to the screen, too
---  {{ log("Call your dad!", info=True) }} --> This will be put to the screen
-    {# log("Call your dad!", info=True) #} --> This won't be executed
+    {{ log("Call your mom!") }}                              -- tylko do logs/dbt.log
+    {{ log("Call your dad!", info=True) }}                    -- do logu ORAZ na ekran (info=True)
+--  {{ log("Call your dad!", info=True) }}                    -- i tak wyświetli się na ekranie -
+                                                                -- komentarz SQL (--) nie wyłącza Jinja
+    {# log("Call your dad!", info=True) #}                    -- to jedyny sposób, żeby NIE wykonać
 {% endmacro %}

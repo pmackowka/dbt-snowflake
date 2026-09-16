@@ -17,7 +17,13 @@ sources:
       - name: reviews
         identifier: raw_reviews
         config:
+          # Pole, którego dbt użyje do sprawdzenia, jak "świeże" są dane (dbt source freshness).
           loaded_at_field: date
+          # Tylko reviews ma freshness (listings/hosts nie) - to jedyne źródło, które w realnym
+          # pipeline'ie ładowałoby się często (nowe recenzje spływają non-stop), więc ma sens
+          # monitorować opóźnienie. Progi 1h/24h są orientacyjne (dane kursu ładowane ręcznie z
+          # S3, nie w czasie rzeczywistym) - w produkcyjnym pipeline'ie odzwierciedlałyby realną
+          # umowę o świeżości danych (SLA) z zespołem, który je konsumuje.
           freshness:
             warn_after: {count: 1, period: hour}
             error_after: {count: 24, period: hour}

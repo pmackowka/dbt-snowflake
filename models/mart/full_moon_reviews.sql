@@ -1,4 +1,12 @@
-{# Mart (table): fct_reviews + seed_full_moon_dates - oznacza recenzje z nocy po pełni #}
+{#
+	Mart: fct_reviews + seed_full_moon_dates - oznacza recenzje z nocy po pełni.
+
+	materialized='table', nie odziedziczone 'view' z projektu: to finalna tabela biznesowa
+	(mart), do której docelowo sięga analiza w analyses/full_moon_no_sleep.sql i BI - fizyczna
+	tabela czyta się od razu, bez przeliczania joina z fct_reviews i seedem przy każdym
+	zapytaniu. Koszt (jedno przeliczenie przy dbt run) jest niższy niż powtarzalny koszt
+	wielokrotnego odpytywania widoku przez kogoś, kto analizuje te dane.
+#}
 {{ config(
   materialized = 'table',
 ) }}

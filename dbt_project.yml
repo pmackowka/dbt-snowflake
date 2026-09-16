@@ -3,18 +3,15 @@
 # materializacja PER FOLDER (view/table/ephemeral), hook post-hook nadający dostęp roli
 # REPORTER (patrz README.md -> Setup -> 1. Snowflake) i zmienna user_name (macros/*variable*).
 
-# Name your project! Project names should contain only lowercase characters
-# and underscores. A good package name should reflect your organization's
-# name or the intended use of these models
+# Nazwa projektu - tylko małe litery i podkreślenia, musi się zgadzać z kluczem najwyższego
+# poziomu w profiles.yml (patrz profil poniżej).
 name: 'snowflake_project'
 version: '1.0.0'
 
-# This setting configures which "profile" dbt uses for this project.
+# Profil, którego dbt użyje do połączenia z bazą - musi mieć odpowiednik w profiles.yml.
 profile: 'snowflake_project'
 
-# These configurations specify where dbt should look for different types of files.
-# The `model-paths` config, for example, states that models in this project can be
-# found in the "models/" directory. You probably won't need to change these!
+# Ścieżki do folderów z poszczególnymi typami plików projektu.
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -23,31 +20,37 @@ macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 asset-paths: ["assets"]  # obrazy osadzane w dokumentacji (dbt docs)
 
-clean-targets:         # directories to be removed by `dbt clean`
+clean-targets:         # foldery usuwane przez `dbt clean`
   - "target"
   - "dbt_packages"
 
 
-# Configuring models
-# Full documentation: https://docs.getdbt.com/docs/configuring-models
-
-# In this example config, we tell dbt to build all models in the example/
-# directory as views. These settings can be overridden in the individual model
-# files using the `{{ config(...) }}` macro.
+# Konfiguracja domyślnej materializacji per folder - nadpisywalna per model przez
+# {{ config(...) }} w samym pliku .sql (patrz np. models/fct/fct_reviews.sql).
 models:
   snowflake_project:
-    +materialized: view  # domyślnie wszystko jako `view`
+    # view jako domyślna materializacja PROJEKTU (nie table jak w siostrzanym repo
+    # dbt-bigquery): świadomie inny punkt startowy - większość modeli w tym projekcie to proste
+    # przekształcenia bez kosztownych agregacji, więc przeliczanie na bieżąco (widok) jest tańsze
+    # niż trzymanie i regularne nadpisywanie fizycznej tabeli, której nikt nie musi czytać wprost.
+    +materialized: view
     # post-hook uruchamia się automatycznie po zbudowaniu KAŻDEGO modelu - bez tego trzeba by
     # ręcznie odtwarzać GRANT po każdym dbt run, bo dbt nadpisuje/tworzy obiekty od nowa
     +post-hook:
       - "GRANT SELECT ON {{ this }} TO ROLE REPORTER"
     dim:
-      +materialized: table  # folder models/dim jako tabela
+      # table dla wymiarów: dim_listings_w_hosts i dim_hosts_cleansed są odpytywane bezpośrednio
+      # przez dashboardy (patrz models/dashboards.yml) - fizyczna tabela czyta się szybciej niż
+      # widok przeliczany od zera przy każdym zapytaniu BI.
+      +materialized: table
     src:
-      +materialized: ephemeral  # folder models/src jako ephemeral
+      # ephemeral dla staging: modele src_* to tylko rename kolumn z surowych tabel (patrz
+      # models/src/*.sql), używane wyłącznie jako CTE wewnątrz modeli dim/fct - nie ma sensu
+      # trzymać ich jako osobny obiekt w bazie, skoro nikt nie odpytuje ich wprost.
+      +materialized: ephemeral
 
 vars:
+  # Wartość domyślna dla var("user_name", ...) używanego w macros/logging.sql i
+  # macros/variable_test.sql - pozwala nadpisać ją z CLI (--vars) bez zmiany kodu makra,
+  # patrz README/notatka sekcja 12.
   user_name: "PIOTR"
-
-
-
