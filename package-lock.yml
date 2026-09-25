@@ -1,12 +1,7 @@
-# Plik generowany automatycznie przez `dbt deps` - zapisuje DOKŁADNE, przetestowane wersje
-# pakietów, w tym zależności TRANZYTYWNE (dbt_date poniżej nie jest w packages.yml wprost -
-# to zależność samego dbt_expectations, dbt deps rozwiązuje ją automatycznie). Commitowany
-# celowo (jak package-lock.json w npm), żeby `dbt deps` na innym komputerze zainstalował
-# identyczne wersje, nie cokolwiek najnowszego pasującego do zakresu w packages.yml.
-#
-# `dbt deps` NIE nadpisuje tego pliku, dopóki packages.yml się nie zmieni (sha1_hash poniżej to
-# hash zawartości packages.yml) - ten komentarz przetrwa zwykłe `dbt deps`, zniknie dopiero przy
-# faktycznej zmianie wersji pakietu.
+# Generowany przez dbt deps: jedna konkretna wersja każdego pakietu (także pośrednich, np. dbt_date
+# - zależność dbt_expectations). Commitowany jak package-lock.json w npm - inna maszyna dostaje
+# identyczne wersje. sha1_hash to hash listy pakietów z packages.yml, nie tekstu pliku (komentarze
+# się nie liczą); dbt regeneruje plik tylko przy niezgodności hasha, więc ten komentarz przetrwa.
 packages:
   - name: dbt_utils
     package: dbt-labs/dbt_utils
@@ -14,10 +9,7 @@ packages:
   - name: dbt_expectations
     package: metaplane/dbt_expectations
     version: 0.10.10
-  - name: codegen
-    package: dbt-labs/codegen
-    version: 0.14.1
   - name: dbt_date
     package: godatadriven/dbt_date
     version: 0.21.0
-sha1_hash: ff6e5c877338b64aa48d5c412eae3bc6607282a8
+sha1_hash: da587d6a2d8b3bd47697f80cbc79c667b023315b
