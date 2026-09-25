@@ -6,11 +6,14 @@
 # zbudować - dbt robi w Snowflake dokładnie to, na co GRANT-y pozwalają tej roli.
 # Generowanie klucza i provisioning -> README.md -> Setup -> 1. Snowflake.
 #
-# Wymagane zmienne środowiskowe :
+# Wymagane zmienne środowiskowe (dev - domyślny target):
 #   export SNOWFLAKE_ACCOUNT="xy12345.us-east-2.aws"
 #   export SNOWFLAKE_USER="dbt"
 #   export SNOWFLAKE_PRIVATE_KEY_PATH="/sciezka/do/klucza/rsa_key.p8"   # POZA folderem repo
 #   export SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=""                          # puste, jeśli klucz bez hasła
+# Tylko przy --target prod (osobna tożsamość, patrz komentarz przy targecie prod):
+#   export SNOWFLAKE_PROD_ACCOUNT, SNOWFLAKE_PROD_USER, SNOWFLAKE_PROD_PRIVATE_KEY_PATH
+#   (opcjonalnie SNOWFLAKE_PROD_PRIVATE_KEY_PASSPHRASE)
 snowflake_project: # musi pasować do `profile:` w dbt_project.yml
   target: dev
   outputs:
@@ -32,3 +35,19 @@ snowflake_project: # musi pasować do `profile:` w dbt_project.yml
       # Tag trafia do QUERY_HISTORY: po nim filtruje się koszt dbt per środowisko.
       query_tag: dbt_snowflake_project_dev
 
+    # Prod ma WŁASNE zmienne, bez fallbacku na dev. Przy wspólnym userze izolacja to tylko nazwa
+    # schematu: przypadkowe --target prod z laptopa = zapis do prod, a w historii zapytań jeden
+    # user dla wszystkiego. dbt renderuje tylko wybrany target, więc brak zmiennych prod nie
+    # przeszkadza w pracy na dev. Rola TRANSFORM_PROD wymaga osobnego provisioningu.
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_PROD_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_PROD_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PROD_PRIVATE_KEY_PATH') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PROD_PRIVATE_KEY_PASSPHRASE', '') }}"
+      role: TRANSFORM_PROD
+      database: AIRBNB
+      warehouse: COMPUTE_WH
+      schema: PROD
+      threads: 4  # uzasadnienie przy targecie dev
+      query_tag: dbt_snowflake_project_prod
