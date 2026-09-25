@@ -1,0 +1,24 @@
+# Środowisko Pythona dla dbt. To jedyne miejsce, gdzie zależności wpisuje się ręcznie.
+# Cykl: deklaracja (ten plik) -> uv lock (rozwiązanie drzewa) -> uv sync (odtworzenie 1:1).
+#
+#   pyproject.toml   - zależności bezpośrednie, pisane ręcznie
+#   uv.lock          - całe drzewo (dbt-core, snowflake-connector...) z hashami; generowany
+#   .python-version  - wersja interpretera; uv sync pobiera go sam
+#
+#   uv sync                                   - .venv dokładnie według uv.lock
+#   uv run dbt build ...                      - dbt bez ręcznej aktywacji venv
+#   uv lock --upgrade-package dbt-snowflake   - świadome podbicie wersji
+#   uv sync --locked                          - dla CI: pada, gdy lock rozjechał się z tym plikiem
+[project]
+name = "snowflake-project"
+version = "1.0.0"
+description = "dbt Core na Snowflake - pipeline Airbnb (listings/hosts/reviews)"
+requires-python = ">=3.11"
+dependencies = [
+    # Tylko adapter, reszta stosu przypięta w uv.lock. == , bo podbicie ma być świadomą zmianą.
+    "dbt-snowflake==1.12.0",
+]
+
+[tool.uv]
+# Środowisko do uruchamiania dbt, nie paczka do publikacji.
+package = false

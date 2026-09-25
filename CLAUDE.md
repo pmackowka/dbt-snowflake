@@ -5,15 +5,14 @@ Projekt dbt Core (Snowflake) z kursu Udemy *The Complete dbt Bootcamp*, rozszerz
 ## Setup i komendy
 
 ```bash
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt          # dbt-snowflake==1.12.0
+uv sync                                  # .venv wg uv.lock (dbt-snowflake==1.12.0); nowe zależności: uv add
 
 cp profiles.yml.example profiles.yml     # profiles.yml jest w .gitignore, nigdy nie commitować
 export SNOWFLAKE_ACCOUNT="..." SNOWFLAKE_USER="dbt" SNOWFLAKE_PRIVATE_KEY_PATH="..."
 
-dbt deps --profiles-dir .
-dbt parse --profiles-dir .               # weryfikacja bez połączenia ze Snowflake
-dbt build --profiles-dir .               # seed + snapshot + run + test, wymaga żywego połączenia
+uv run dbt deps --profiles-dir .
+uv run dbt parse --profiles-dir .        # weryfikacja bez połączenia ze Snowflake
+uv run dbt build --profiles-dir .        # seed + snapshot + run + test, wymaga żywego połączenia
 ```
 
 Pełny provisioning Snowflake (rola/warehouse/user/RSA key/import z S3) → README.md sekcja Setup.
