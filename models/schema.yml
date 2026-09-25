@@ -1,7 +1,7 @@
-# Dokumentacja + testy modeli dim/fct. dim_listings_w_hosts to deep dive z dbt_expectations (patrz
-# notatka, sekcja 10): porównanie liczby wierszy z tabelą źródłową (wykrywa utracone wiersze po
-# joinie), kwantyle jako wykrywanie outlierów, severity: warn na wartościach ekstremalnych zamiast
-# blokowania builda (drogi apartament to nie błąd danych, tylko coś do przejrzenia ręcznie).
+# Testy modeli dim/fct. Domyślna severity to error (brak +severity w dbt_project.yml), więc
+# padnięty test zatrzymuje modele zależne w dbt build. Klucze pod joinami mają unique/not_null.
+# dim_listings_w_hosts: dbt_expectations - liczba wierszy równa źródłu (utracone lub zwielokrotnione
+# wiersze po joinie), kwantyle jako wykrywanie outlierów.
 version: 2
 
 models:
@@ -66,6 +66,11 @@ models:
           arguments:
             compare_model: source('airbnb', 'listings')
     columns:
+      - name: listing_id
+        tests:
+          - unique
+          - not_null
+
       - name: price
         tests:
           - dbt_expectations.expect_column_values_to_be_of_type:
@@ -80,7 +85,9 @@ models:
               arguments:
                 max_value: 5000
               config:
-                severity: warn # nietypowa, ale prawdziwa oferta (np. luksusowy apartament) nie blokuje builda
+                # Luksusowa oferta to nie błąd danych. Deklaracja, nie bramka: warn to exit code 0 i wpis
+                # w logu - bez --store-failures i alertu nikt go nie zobaczy.
+                severity: warn
 
   - name: fct_reviews
     columns:
@@ -92,6 +99,7 @@ models:
 
       - name: listing_id
         tests:
+          - not_null  # relationships pomija NULL-e, więc bez tego osierocona recenzja przechodzi
           - relationships:
               arguments:
                 to: ref('dim_listings_cleansed')
