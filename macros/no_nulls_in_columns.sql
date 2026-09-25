@@ -1,8 +1,7 @@
 {#
-	Makro typu 1 (używane wewnątrz testu SQL) - generuje test "brak NULL-i w żadnej kolumnie"
-	bez ręcznego wymieniania kolumn: adapter.get_columns_in_relation() czyta metadane kolumn
-	modelu w czasie kompilacji i buduje warunek col1 IS NULL OR col2 IS NULL OR ... OR FALSE.
-	Użycie jako singular test: tests/no_nulls_in_dim_listings.sql.
+	Test "brak NULL-i w żadnej kolumnie" bez wymieniania kolumn: get_columns_in_relation() czyta
+	je z bazy i buduje col1 IS NULL OR ... OR FALSE. Zielony dbt parse nic tu nie dowodzi: przy
+	parsowaniu makro dostaje pustą listę kolumn (@available.parse_list). Użycie: tests/no_nulls_in_dim_listings.sql.
 #}
 {% macro no_nulls_in_columns(model) %}
     SELECT * FROM {{ model }} WHERE

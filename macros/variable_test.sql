@@ -1,8 +1,6 @@
 {#
-	Makro typu 3 (operacja) - rozszerza macros/logging.sql o zmienne dbt.
-	{% set your_name = ... %} to zmienna lokalna, na sztywno w kodzie. var("user_name", default)
-	to zmienna PROJEKTU, nadpisywalna z CLI bez zmiany kodu - patrz przykładowe wywołania
-	i realny output w komentarzu na dole pliku.
+	Makro-operacja: logging.sql + zmienne. {% set %} to zmienna lokalna, na sztywno w kodzie;
+	var("user_name", default) to zmienna projektu, nadpisywalna przez --vars bez zmiany kodu.
 #}
 {% macro logging_and_variables() %}
     {{ log("Call your mom!") }}
@@ -26,7 +24,11 @@
 
 {#
 dbt run-operation logging_and_variables --profiles-dir .
-dbt run-operation logging_and_variables --profiles-dir . --args '{"user_name": "Piotr"}'
+dbt run-operation logging_and_variables --profiles-dir . --vars '{user_name: Piotr}'
+
+--vars, nie --args: --args to argumenty makra, a to makro ich nie ma (Jinja: TypeError).
+PIOTR poniżej pochodzi z vars w dbt_project.yml. "This shouldn't be printed" się wypisuje,
+bo -- to komentarz SQL, nie Jinja. Output z pierwszego wywołania:
 
 15:54:35  Call your mom!
 15:54:35  This shouldn't be printed

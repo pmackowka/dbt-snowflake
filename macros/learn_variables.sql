@@ -1,7 +1,6 @@
 {#
-	Makro typu 3 (operacja) - starsza, krótsza wersja macros/variable_test.sql, zachowana jako
-	materiał referencyjny ze scalenia dwóch przejść projektu (razem z assets/). Demonstruje var("nazwa", "domyślna") - wartość
-	nadpisywalna z CLI (--vars) bez zmiany kodu makra.
+	Starsza wersja variable_test.sql, zachowana jako materiał referencyjny ze scalenia dwóch
+	przejść projektu. var("nazwa", "domyślna") - nadpisywalne przez --vars bez zmiany kodu.
 	Uruchomienie: dbt run-operation learn_variables --profiles-dir . --vars '{user_name: Piotr}'
 #}
 {% macro learn_variables() %}
