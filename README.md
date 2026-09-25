@@ -76,10 +76,11 @@ CREATE DATABASE IF NOT EXISTS AIRBNB;
 CREATE SCHEMA IF NOT EXISTS AIRBNB.RAW;
 CREATE SCHEMA IF NOT EXISTS AIRBNB.DEV;
 
--- ALL na bazie jest szerokie (TRANSFORM sama ładuje RAW niżej); w prod zawężone - patrz sekcja prod.
+-- ALL na bazie zawiera CREATE SCHEMA: dbt sam tworzy DEV_SNAPSHOTS i zostaje jego właścicielem.
+-- Schematy wprost, nie ALL/FUTURE SCHEMAS - inaczej rola dev dostałaby też PROD i PROD_SNAPSHOTS.
 GRANT ALL ON DATABASE AIRBNB TO ROLE TRANSFORM;
-GRANT ALL ON ALL SCHEMAS IN DATABASE AIRBNB TO ROLE TRANSFORM;
-GRANT ALL ON FUTURE SCHEMAS IN DATABASE AIRBNB TO ROLE TRANSFORM;
+GRANT ALL ON SCHEMA AIRBNB.RAW TO ROLE TRANSFORM;
+GRANT ALL ON SCHEMA AIRBNB.DEV TO ROLE TRANSFORM;
 GRANT ALL ON ALL TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM;
 GRANT ALL ON FUTURE TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM;
 ```
@@ -118,12 +119,10 @@ COPY INTO raw_reviews
 ```sql
 USE ROLE ACCOUNTADMIN;
 CREATE SCHEMA IF NOT EXISTS AIRBNB.PROD;
--- FUTURE SCHEMAS z sekcji dev dał roli TRANSFORM ALL także na PROD - bez tego klucz dev pisze do prod.
-REVOKE ALL ON SCHEMA AIRBNB.PROD FROM ROLE TRANSFORM;
 
 CREATE ROLE IF NOT EXISTS TRANSFORM_PROD;
 GRANT USAGE, OPERATE ON WAREHOUSE COMPUTE_WH TO ROLE TRANSFORM_PROD;
-GRANT USAGE ON DATABASE AIRBNB TO ROLE TRANSFORM_PROD;
+GRANT USAGE, CREATE SCHEMA ON DATABASE AIRBNB TO ROLE TRANSFORM_PROD;   -- dbt tworzy PROD_SNAPSHOTS
 GRANT USAGE ON SCHEMA AIRBNB.RAW TO ROLE TRANSFORM_PROD;
 GRANT SELECT ON ALL TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM_PROD;     -- RAW tylko do odczytu
 GRANT SELECT ON FUTURE TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM_PROD;
@@ -142,7 +141,7 @@ GRANT USAGE ON DATABASE AIRBNB TO ROLE REPORTER;
 GRANT USAGE ON SCHEMA AIRBNB.PROD TO ROLE REPORTER;   -- SELECT na tabelach nadaje dbt (+grants)
 ```
 
-Snapshoty mają `target_schema` na sztywno (`DEV`, patrz komentarz w `snapshots/scd_raw_listings.sql`), więc przy tych uprawnieniach **snapshot w prod padnie na braku dostępu do `AIRBNB.DEV`**. To zamierzone: kolizja dev/prod staje się błędem, a nie cichym zapisem do wspólnej historii. Przed pierwszym buildem prod trzeba zdecydować o schemacie snapshotów.
+Snapshoty trafiają do `<schemat targetu>_SNAPSHOTS` (`DEV_SNAPSHOTS` / `PROD_SNAPSHOTS`) — dbt tworzy te schematy sam, a rola, która je utworzy, zostaje ich właścicielem. `REPORTER` nie dostaje do nich dostępu: BI czyta marty.
 
 ### 2. Repo i środowisko Python
 
