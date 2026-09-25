@@ -1,14 +1,12 @@
 {#
-	Snapshot SCD2 gospodarzy - mechanika i wybory jak w scd_raw_listings.sql, łącznie z kolizją
-	dev/prod przez target_schema. Osobny plik, bo blok snapshot obejmuje jedną tabelę źródłową.
-	'dev' małymi literami trafia do tego samego schematu co 'DEV': Snowflake normalizuje
-	niecudzysłowione identyfikatory do wielkich liter.
+	Snapshot SCD2 gospodarzy - mechanika i wybory (łącznie ze schematem per środowisko) jak
+	w scd_raw_listings.sql. Osobny plik, bo blok snapshot obejmuje jedną tabelę źródłową.
 #}
 {% snapshot scd_raw_hosts %}
 
 {{
    config(
-       target_schema='dev',
+       schema='snapshots',
        unique_key='id',
        strategy='timestamp',
        updated_at='updated_at',

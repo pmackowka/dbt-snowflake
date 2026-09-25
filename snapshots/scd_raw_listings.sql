@@ -8,16 +8,15 @@
 	hard_deletes='invalidate': fizycznie usunięta oferta dostaje dbt_valid_to, zamiast wiecznie
 	wyglądać na aktualną.
 
-	UWAGA - kolizja dev/prod: target_schema jest brany dosłownie, bez prefiksu target.schema.
-	Manifest przy --target prod: AIRBNB.DEV.scd_raw_listings - dev i prod piszą do TEJ SAMEJ
-	historii. Świadomie niezmienione: zmiana schematu porzuca zebraną historię SCD2. Naprawa
-	przy uruchomieniu prod: schema='snapshots' (-> <target.schema>_SNAPSHOTS) + migracja tabeli.
+	schema, nie target_schema: target_schema jest brany dosłownie, więc dev i prod pisały do
+	tej samej historii (AIRBNB.DEV). schema przechodzi przez generate_schema_name i dostaje
+	prefiks środowiska: DEV_SNAPSHOTS / PROD_SNAPSHOTS.
 #}
 {% snapshot scd_raw_listings %}
 
 {{
    config(
-       target_schema='DEV',
+       schema='snapshots',
        unique_key='id',
        strategy='timestamp',
        updated_at='updated_at',
