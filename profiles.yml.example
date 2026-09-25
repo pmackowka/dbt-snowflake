@@ -1,13 +1,12 @@
 # Szablon połączenia ze Snowflake.
 # Skopiuj do profiles.yml (plik jest w .gitignore) albo do ~/.dbt/profiles.yml.
 #
-# Autoryzacja: para kluczy RSA (key-pair), nie hasło. To nie moja preferencja - tak provisionuje
-# usera "dbt" oficjalne repo tego kursu (TYPE=SERVICE + RSA_PUBLIC_KEY), bo to standardowa metoda
-# Snowflake dla kont serwisowych/automatyzacji: klucz prywatny nie wygasa jak sesja logowania,
-# działa wszędzie (CI/CD, inny laptop) i widać go jawnie jako uprawnienie w Snowflake, a nie w
-# czyimś haśle. Generowanie klucza i provisioning usera -> README.md -> Setup -> 1. Snowflake.
+# Key-pair auth, nie hasło: standard Snowflake dla kont serwisowych (TYPE=SERVICE). Klucz nie
+# wygasa jak sesja i działa też w CI. To rola z profilu, a nie dbt, rozstrzyga, co dbt może
+# zbudować - dbt robi w Snowflake dokładnie to, na co GRANT-y pozwalają tej roli.
+# Generowanie klucza i provisioning -> README.md -> Setup -> 1. Snowflake.
 #
-# Wymagane zmienne środowiskowe:
+# Wymagane zmienne środowiskowe :
 #   export SNOWFLAKE_ACCOUNT="xy12345.us-east-2.aws"
 #   export SNOWFLAKE_USER="dbt"
 #   export SNOWFLAKE_PRIVATE_KEY_PATH="/sciezka/do/klucza/rsa_key.p8"   # POZA folderem repo
@@ -25,4 +24,11 @@ snowflake_project: # musi pasować do `profile:` w dbt_project.yml
       database: AIRBNB
       warehouse: COMPUTE_WH
       schema: DEV
-      threads: 1
+      # Wątki dzielą JEDEN warehouse: Snowflake wykonuje na nim naraz do MAX_CONCURRENCY_LEVEL
+      # zapytań (domyślnie 8), resztę kolejkuje. Płaci się za czas działania warehouse'u, nie za
+      # zapytanie, więc równoległe małe modele skracają ten czas. Najszerszy poziom DAG-u to ok. 5
+      # węzłów (seed, 2 snapshoty, 2 dim, fct) - 4 wystarcza, 1 serializował wszystko.
+      threads: 4
+      # Tag trafia do QUERY_HISTORY: po nim filtruje się koszt dbt per środowisko.
+      query_tag: dbt_snowflake_project_dev
+
