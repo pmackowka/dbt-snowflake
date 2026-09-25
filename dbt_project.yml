@@ -1,7 +1,7 @@
 
 # Główny plik konfiguracyjny projektu dbt: nazwa, profil, ścieżki folderów, domyślna
-# materializacja PER FOLDER (view/table/ephemeral), hook post-hook nadający dostęp roli
-# REPORTER (patrz README.md -> Setup -> 1. Snowflake) i zmienna user_name (macros/*variable*).
+# materializacja PER FOLDER (view/table/ephemeral), grants dla roli REPORTER w prod
+# (patrz README.md -> Setup -> 1. Snowflake) i zmienna user_name (macros/*variable*).
 
 # Nazwa projektu - tylko małe litery i podkreślenia, musi się zgadzać z kluczem najwyższego
 # poziomu w profiles.yml (patrz profil poniżej).
@@ -34,10 +34,10 @@ models:
     # przekształcenia bez kosztownych agregacji, więc przeliczanie na bieżąco (widok) jest tańsze
     # niż trzymanie i regularne nadpisywanie fizycznej tabeli, której nikt nie musi czytać wprost.
     +materialized: view
-    # post-hook uruchamia się automatycznie po zbudowaniu KAŻDEGO modelu - bez tego trzeba by
-    # ręcznie odtwarzać GRANT po każdym dbt run, bo dbt nadpisuje/tworzy obiekty od nowa
-    +post-hook:
-      - "GRANT SELECT ON {{ this }} TO ROLE REPORTER"
+    # Natywne grants zamiast post-hooka z GRANT: dbt porównuje stan z deklaracją i odbiera
+    # uprawnienia dodane ręcznie. Tylko prod - GRANT do nieistniejącej roli wywraca build, a dev
+    # nie potrzebuje BI. Kto czyta, rozstrzyga rola REPORTER w Snowflake, nie dbt.
+    +grants: "{{ {'select': ['REPORTER']} if target.name == 'prod' else {} }}"
     dim:
       # table dla wymiarów: dim_listings_w_hosts i dim_hosts_cleansed są odpytywane bezpośrednio
       # przez dashboardy (patrz models/dashboards.yml) - fizyczna tabela czyta się szybciej niż
