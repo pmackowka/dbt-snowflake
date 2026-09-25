@@ -110,14 +110,15 @@ Rola `REPORTER` (odbiorca `post-hook` z `dbt_project.yml`, pod BI typu Preset/Su
 
 ### 2. Repo i środowisko Python
 
+Wymagane: [uv](https://docs.astral.sh/uv/) (`brew install uv`). Pythona 3.11 uv pobierze sam, jeśli go brakuje.
+
 ```bash
 git clone https://github.com/pmackowka/dbt-snowflake.git
 cd dbt-snowflake
-
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt  # instaluje dbt-snowflake==1.12.0 (dociąga zgodny dbt-core)
+uv sync   # .venv dokładnie według uv.lock (dbt-snowflake==1.12.0 + przypięte dbt-core i reszta drzewa)
 ```
+
+`pyproject.toml` to zależności bezpośrednie (pisane ręcznie), `uv.lock` całe drzewo z hashami (generowany), `.python-version` wersja interpretera. Nowa zależność: `uv add <pakiet>`, podbicie adaptera: `uv lock --upgrade-package dbt-snowflake`.
 
 ### 3. Konfiguracja połączenia
 
@@ -128,22 +129,22 @@ export SNOWFLAKE_USER="dbt"
 export SNOWFLAKE_PRIVATE_KEY_PATH="$HOME/.snowflake/rsa_key.p8"
 export SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=""   # puste, bo klucz wygenerowany z -nocrypt
 
-dbt deps --profiles-dir .    # instaluje pakiety z packages.yml do dbt_packages/
-dbt debug --profiles-dir .   # weryfikuje połączenie PRZED pierwszym run
+uv run dbt deps --profiles-dir .    # instaluje pakiety z packages.yml do dbt_packages/
+uv run dbt debug --profiles-dir .   # weryfikuje połączenie PRZED pierwszym run
 ```
 
 ### 4. Pierwszy build
 
 ```bash
-dbt seed --profiles-dir .       # ładuje seeds/seed_full_moon_dates.csv (dbt run tego NIE robi)
-dbt snapshot --profiles-dir .   # pierwszy przebieg snapshotów SCD2 (scd_raw_listings, scd_raw_hosts)
-dbt build --profiles-dir .      # seed + snapshot + run + test w jednym poleceniu, kolejność wg DAG-a
+uv run dbt seed --profiles-dir .       # ładuje seeds/seed_full_moon_dates.csv (dbt run tego NIE robi)
+uv run dbt snapshot --profiles-dir .   # pierwszy przebieg snapshotów SCD2 (scd_raw_listings, scd_raw_hosts)
+uv run dbt build --profiles-dir .      # seed + snapshot + run + test w jednym poleceniu, kolejność wg DAG-a
 ```
 
 `dbt build` przy kolejnych uruchomieniach wystarcza sam. Backfill konkretnego zakresu dat w `fct_reviews`:
 
 ```bash
-dbt run --select fct_reviews --vars '{start_date: "2024-02-15 00:00:00", end_date: "2024-03-15 23:59:59"}' --profiles-dir .
+uv run dbt run --select fct_reviews --vars '{start_date: "2024-02-15 00:00:00", end_date: "2024-03-15 23:59:59"}' --profiles-dir .
 ```
 
 ## Notatki (prywatne, tylko dla mnie)
