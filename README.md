@@ -12,7 +12,7 @@ models/fct/         # fct_reviews — fakt, incremental
 models/mart/         # full_moon_reviews — finalna tabela biznesowa
 models/documents/   # custom overview + doc() bloki dla dbt docs
 seeds/               # seed_full_moon_dates.csv
-snapshots/           # SCD2 dla listings i hosts (invalidate_hard_deletes)
+snapshots/           # SCD2 dla listings i hosts (hard_deletes: invalidate, tabele permanentne)
 tests/                # singular testy + wywołania generic testów
 macros/               # positive_value, no_nulls_in_columns, logowanie/zmienne (operacje)
 analyses/             # zapytania eksploracyjne (dbt compile, bez materializacji)
@@ -41,11 +41,25 @@ grep -v -- '-----' ~/.snowflake/rsa_key.pub | tr -d '\n'
 ```sql
 USE ROLE ACCOUNTADMIN;
 
+-- Snowflake liczy koszt za CZAS działania warehouse'u, nie za dane. ALTER, a nie tylko
+-- CREATE ... IF NOT EXISTS: konto trial ma COMPUTE_WH z góry, więc parametry z CREATE by nie weszły.
 CREATE WAREHOUSE IF NOT EXISTS COMPUTE_WH;
+ALTER WAREHOUSE COMPUTE_WH SET
+  WAREHOUSE_SIZE = XSMALL
+  AUTO_SUSPEND = 60                     -- sekundy bezczynności do wyłączenia (default 600)
+  AUTO_RESUME = TRUE
+  STATEMENT_TIMEOUT_IN_SECONDS = 600;   -- zapętlone zapytanie nie pali kredytów przez 2 dni (default 172800)
+
+-- Twardy limit kredytów: 100% zawiesza warehouse. Profil dbt tego nie załatwi - to obiekt konta.
+CREATE RESOURCE MONITOR IF NOT EXISTS DBT_MONITOR
+  WITH CREDIT_QUOTA = 10 FREQUENCY = MONTHLY START_TIMESTAMP = IMMEDIATELY
+  TRIGGERS ON 80 PERCENT DO NOTIFY ON 100 PERCENT DO SUSPEND;
+ALTER WAREHOUSE COMPUTE_WH SET RESOURCE_MONITOR = DBT_MONITOR;
 
 CREATE ROLE IF NOT EXISTS TRANSFORM;
 GRANT ROLE TRANSFORM TO ROLE ACCOUNTADMIN;
-GRANT OPERATE ON WAREHOUSE COMPUTE_WH TO ROLE TRANSFORM;
+-- USAGE + OPERATE, nie ALL: ALL zawiera MODIFY, czyli rola dbt mogłaby powiększyć warehouse.
+GRANT USAGE, OPERATE ON WAREHOUSE COMPUTE_WH TO ROLE TRANSFORM;
 
 CREATE USER IF NOT EXISTS dbt
   LOGIN_NAME = 'dbt'
@@ -62,7 +76,7 @@ CREATE DATABASE IF NOT EXISTS AIRBNB;
 CREATE SCHEMA IF NOT EXISTS AIRBNB.RAW;
 CREATE SCHEMA IF NOT EXISTS AIRBNB.DEV;
 
-GRANT ALL ON WAREHOUSE COMPUTE_WH TO ROLE TRANSFORM;
+-- ALL na bazie jest szerokie (TRANSFORM sama ładuje RAW niżej); w prod zawężone - patrz sekcja prod.
 GRANT ALL ON DATABASE AIRBNB TO ROLE TRANSFORM;
 GRANT ALL ON ALL SCHEMAS IN DATABASE AIRBNB TO ROLE TRANSFORM;
 GRANT ALL ON FUTURE SCHEMAS IN DATABASE AIRBNB TO ROLE TRANSFORM;
@@ -99,7 +113,36 @@ COPY INTO raw_reviews
   FILE_FORMAT = (type = 'CSV' skip_header = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '"');
 ```
 
-Rola `REPORTER` (odbiorca `+grants` z `dbt_project.yml`, pod BI typu Preset/Superset — patrz `models/dashboards.yml`) jest potrzebna tylko przy `--target prod`: grants nadaje się wyłącznie tam, bo GRANT do nieistniejącej roli wywraca build. Dev działa bez niej.
+**Prod (opcjonalnie, tylko pod `--target prod`)** — osobny user i rola, żeby klucz dev nie mógł pisać do prod. `REPORTER` to odbiorca `+grants` z `dbt_project.yml` (BI, patrz `models/dashboards.yml`): grants działa tylko w prod, bo GRANT do nieistniejącej roli wywraca build. Klucz prod generujesz jak wyżej, pod inną nazwą pliku.
+
+```sql
+USE ROLE ACCOUNTADMIN;
+CREATE SCHEMA IF NOT EXISTS AIRBNB.PROD;
+-- FUTURE SCHEMAS z sekcji dev dał roli TRANSFORM ALL także na PROD - bez tego klucz dev pisze do prod.
+REVOKE ALL ON SCHEMA AIRBNB.PROD FROM ROLE TRANSFORM;
+
+CREATE ROLE IF NOT EXISTS TRANSFORM_PROD;
+GRANT USAGE, OPERATE ON WAREHOUSE COMPUTE_WH TO ROLE TRANSFORM_PROD;
+GRANT USAGE ON DATABASE AIRBNB TO ROLE TRANSFORM_PROD;
+GRANT USAGE ON SCHEMA AIRBNB.RAW TO ROLE TRANSFORM_PROD;
+GRANT SELECT ON ALL TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM_PROD;     -- RAW tylko do odczytu
+GRANT SELECT ON FUTURE TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM_PROD;
+GRANT ALL ON SCHEMA AIRBNB.PROD TO ROLE TRANSFORM_PROD;
+
+CREATE USER IF NOT EXISTS dbt_prod
+  TYPE = SERVICE
+  RSA_PUBLIC_KEY = '<<klucz publiczny prod>>'
+  DEFAULT_ROLE = TRANSFORM_PROD
+  DEFAULT_WAREHOUSE = 'COMPUTE_WH';
+GRANT ROLE TRANSFORM_PROD TO USER dbt_prod;
+
+CREATE ROLE IF NOT EXISTS REPORTER;
+GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE REPORTER;
+GRANT USAGE ON DATABASE AIRBNB TO ROLE REPORTER;
+GRANT USAGE ON SCHEMA AIRBNB.PROD TO ROLE REPORTER;   -- SELECT na tabelach nadaje dbt (+grants)
+```
+
+Snapshoty mają `target_schema` na sztywno (`DEV`, patrz komentarz w `snapshots/scd_raw_listings.sql`), więc przy tych uprawnieniach **snapshot w prod padnie na braku dostępu do `AIRBNB.DEV`**. To zamierzone: kolizja dev/prod staje się błędem, a nie cichym zapisem do wspólnej historii. Przed pierwszym buildem prod trzeba zdecydować o schemacie snapshotów.
 
 ### 2. Repo i środowisko Python
 
@@ -117,7 +160,7 @@ uv sync   # .venv dokładnie według uv.lock (dbt-snowflake==1.12.0 + przypięte
 
 ```bash
 cp profiles.yml.example profiles.yml   # profiles.yml jest w .gitignore - nigdy go nie commituj
-export SNOWFLAKE_ACCOUNT="xy12345.us-east-2.aws"   # z URL-a konsoli Snowflake, przed .snowflakecomputing.com
+export SNOWFLAKE_ACCOUNT="xy12345.us-east-2.aws"   # z URL-a konsoli, przed .snowflakecomputing.com (albo orgname-accountname)
 export SNOWFLAKE_USER="dbt"
 export SNOWFLAKE_PRIVATE_KEY_PATH="$HOME/.snowflake/rsa_key.p8"
 export SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=""   # puste, bo klucz wygenerowany z -nocrypt
@@ -126,18 +169,21 @@ uv run dbt deps --profiles-dir .    # instaluje pakiety z packages.yml do dbt_pa
 uv run dbt debug --profiles-dir .   # weryfikuje połączenie PRZED pierwszym run
 ```
 
-### 4. Pierwszy build
+Pod `--target prod` dodatkowo `SNOWFLAKE_PROD_ACCOUNT`, `SNOWFLAKE_PROD_USER`, `SNOWFLAKE_PROD_PRIVATE_KEY_PATH` — bez fallbacku na zmienne dev, więc bez nich prod się nie połączy.
+
+### 4. Build
 
 ```bash
-uv run dbt seed --profiles-dir .       # ładuje seeds/seed_full_moon_dates.csv (dbt run tego NIE robi)
-uv run dbt snapshot --profiles-dir .   # pierwszy przebieg snapshotów SCD2 (scd_raw_listings, scd_raw_hosts)
-uv run dbt build --profiles-dir .      # seed + snapshot + run + test w jednym poleceniu, kolejność wg DAG-a
+uv run dbt source freshness --profiles-dir .   # osobna komenda - dbt build freshness NIE sprawdza
+uv run dbt build --profiles-dir .              # seed + snapshot + run + test, kolejność wg DAG-a
 ```
 
-`dbt build` przy kolejnych uruchomieniach wystarcza sam. Backfill konkretnego zakresu dat w `fct_reviews`:
+Freshness na jednorazowo zaimportowanych danych po dobie zawsze zwróci `error` — to oczekiwane (komentarz w `models/sources.yml`). W orkiestracji to ona byłaby bramką przed buildem.
+
+Backfill zakresu dat w `fct_reviews` (MERGE po `review_id`, więc ponowne wczytanie zakresu nie dubluje wierszy). `end_date` jest wyłączny (`<`), więc podaj początek następnego dnia:
 
 ```bash
-uv run dbt run --select fct_reviews --vars '{start_date: "2024-02-15 00:00:00", end_date: "2024-03-15 23:59:59"}' --profiles-dir .
+uv run dbt run --select fct_reviews --vars '{start_date: "2024-02-15 00:00:00", end_date: "2024-03-16 00:00:00"}' --profiles-dir .
 ```
 
 ## Notatki (prywatne, tylko dla mnie)
