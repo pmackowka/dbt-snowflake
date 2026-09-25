@@ -1,7 +1,5 @@
-# Definicja source() - surowych tabel w schemacie AIRBNB.RAW (patrz README.md -> Setup -> 1.
-# Snowflake -> import danych z S3). identifier: pozwala nazwać źródło inaczej niż fizyczna nazwa
-# tabeli w bazie (przyjazne "listings" zamiast "raw_listings") - modele odwołują się przez
-# source('airbnb', 'listings'), nie przez surową nazwę tabeli.
+# Surowe tabele w AIRBNB.RAW (import z S3 -> README.md -> Setup). identifier: modele wołają
+# source('airbnb', 'listings'), a fizyczna nazwa raw_listings żyje tylko tutaj.
 version: 2
 
 sources:
@@ -17,13 +15,12 @@ sources:
       - name: reviews
         identifier: raw_reviews
         config:
-          # Pole, którego dbt użyje do sprawdzenia, jak "świeże" są dane (dbt source freshness).
+          # Freshness tylko tu: przy strumieniu recenzji data recenzji przybliża moment dopływu,
+          # a listings/hosts nie mają pola, które by to robiło (updated_at to zmiana oferty).
+          # Przy jednorazowym imporcie z S3 wynik po dobie zawsze będzie error - to oczekiwane.
+          # Deklaracja, nie bramka: dbt build freshness NIE sprawdza (brak Source w RUNNER_MAP
+          # dbt/task/build.py). To osobna komenda `dbt source freshness` i bramka w orkiestracji.
           loaded_at_field: date
-          # Tylko reviews ma freshness (listings/hosts nie) - to jedyne źródło, które w realnym
-          # pipeline'ie ładowałoby się często (nowe recenzje spływają non-stop), więc ma sens
-          # monitorować opóźnienie. Progi 1h/24h są orientacyjne (dane kursu ładowane ręcznie z
-          # S3, nie w czasie rzeczywistym) - w produkcyjnym pipeline'ie odzwierciedlałyby realną
-          # umowę o świeżości danych (SLA) z zespołem, który je konsumuje.
           freshness:
             warn_after: {count: 1, period: hour}
             error_after: {count: 24, period: hour}
