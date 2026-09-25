@@ -1,10 +1,9 @@
 # Szablon połączenia ze Snowflake.
 # Skopiuj do profiles.yml (plik jest w .gitignore) albo do ~/.dbt/profiles.yml.
 #
-# Key-pair auth, nie hasło: standard Snowflake dla kont serwisowych (TYPE=SERVICE). Klucz nie
-# wygasa jak sesja i działa też w CI. To rola z profilu, a nie dbt, rozstrzyga, co dbt może
-# zbudować - dbt robi w Snowflake dokładnie to, na co GRANT-y pozwalają tej roli.
-# Generowanie klucza i provisioning -> README.md -> Setup -> 1. Snowflake.
+# Key-pair auth, nie hasło: standard Snowflake dla kont serwisowych (TYPE=SERVICE), działa też w CI.
+# Co dbt może zbudować, rozstrzyga rola z profilu, nie dbt - dbt robi to, na co pozwalają jej GRANT-y.
+# Klucz i provisioning -> README.md -> Setup -> 1. Snowflake.
 #
 # Wymagane zmienne środowiskowe (dev - domyślny target):
 #   export SNOWFLAKE_ACCOUNT="xy12345.us-east-2.aws"
@@ -27,18 +26,16 @@ snowflake_project: # musi pasować do `profile:` w dbt_project.yml
       database: AIRBNB
       warehouse: COMPUTE_WH
       schema: DEV
-      # Wątki dzielą JEDEN warehouse: Snowflake wykonuje na nim naraz do MAX_CONCURRENCY_LEVEL
-      # zapytań (domyślnie 8), resztę kolejkuje. Płaci się za czas działania warehouse'u, nie za
-      # zapytanie, więc równoległe małe modele skracają ten czas. Najszerszy poziom DAG-u to ok. 5
-      # węzłów (seed, 2 snapshoty, 2 dim, fct) - 4 wystarcza, 1 serializował wszystko.
+      # Wątki dzielą JEDEN warehouse: naraz do MAX_CONCURRENCY_LEVEL zapytań (domyślnie 8), reszta
+      # w kolejce. Płaci się za czas działania warehouse'u, więc równoległość małych modeli go
+      # skraca. Najszerszy poziom DAG-u to ok. 5 węzłów - 4 wystarcza.
       threads: 4
       # Tag trafia do QUERY_HISTORY: po nim filtruje się koszt dbt per środowisko.
       query_tag: dbt_snowflake_project_dev
 
-    # Prod ma WŁASNE zmienne, bez fallbacku na dev. Przy wspólnym userze izolacja to tylko nazwa
-    # schematu: przypadkowe --target prod z laptopa = zapis do prod, a w historii zapytań jeden
-    # user dla wszystkiego. dbt renderuje tylko wybrany target, więc brak zmiennych prod nie
-    # przeszkadza w pracy na dev. Rola TRANSFORM_PROD wymaga osobnego provisioningu.
+    # Prod ma WŁASNE zmienne, bez fallbacku na dev: przy wspólnym userze przypadkowe --target prod
+    # z laptopa = zapis do prod, a QUERY_HISTORY nie odróżni środowisk. dbt renderuje tylko
+    # wybrany target, więc dev działa bez zmiennych prod. TRANSFORM_PROD -> README, Setup.
     prod:
       type: snowflake
       account: "{{ env_var('SNOWFLAKE_PROD_ACCOUNT') }}"
