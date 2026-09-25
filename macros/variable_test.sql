@@ -1,5 +1,5 @@
 {#
-	Makro typu 3 (operacja) - rozszerza macros/logging.sql o zmienne dbt (notatka, sekcja 12).
+	Makro typu 3 (operacja) - rozszerza macros/logging.sql o zmienne dbt.
 	{% set your_name = ... %} to zmienna lokalna, na sztywno w kodzie. var("user_name", default)
 	to zmienna PROJEKTU, nadpisywalna z CLI bez zmiany kodu - patrz przykładowe wywołania
 	i realny output w komentarzu na dole pliku.
