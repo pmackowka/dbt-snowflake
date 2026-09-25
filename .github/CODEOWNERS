@@ -1,0 +1,12 @@
+# Kto zatwierdza zmiany w kodzie - warstwa, której dbt nie daje (owner exposure to tekst w docs).
+# Sam CODEOWNERS tylko prosi o review w PR; wymusza je dopiero branch protection z "Require review
+# from Code Owners". Nie dotyczy lokalnej edycji ani pushy bez PR.
+
+# Mart z kontraktem pod dashboard - zmiana kolumn dotyka konsumentów.
+/models/mart/          @pmackowka
+/models/schema.yml     @pmackowka
+
+# Konfiguracja zmieniająca zachowanie całego projektu (defaulty, grants, pakiety, profil).
+/dbt_project.yml       @pmackowka
+/packages.yml          @pmackowka
+/profiles.yml.example  @pmackowka
