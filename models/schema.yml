@@ -84,6 +84,12 @@ models:
 
   - name: fct_reviews
     columns:
+      - name: review_id
+        description: Surrogate key recenzji, unique_key MERGE-a w fct_reviews.sql
+        tests:
+          - unique
+          - not_null
+
       - name: listing_id
         tests:
           - relationships:
