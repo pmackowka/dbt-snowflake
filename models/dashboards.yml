@@ -1,8 +1,7 @@
-# Exposures - deklaracja, że zewnętrzny artefakt (dashboard) zależy od modeli dbt. Nie materializuje
-# się jak model, ale trafia do grafu lineage w wygenerowanej dokumentacji (dbt docs generate) -
-# dzięki temu widać z góry, co się zepsuje downstream, jeśli zmienisz dim_listings_w_hosts albo
-# full_moon_reviews. url/owner poniżej to placeholdery - w kursie to działający dashboard Preset.io
-# podpięty pod rolę REPORTER (patrz README.md -> Setup -> 1. Snowflake, sekcja o roli REPORTER).
+# Exposure: deklaracja, że dashboard zależy od modeli dbt. Nie materializuje się, ale trafia do
+# lineage w dbt docs - widać, co zepsuje zmiana dim_listings_w_hosts albo full_moon_reviews.
+# Deklaracja, nie bramka: dbt nie sprawdza, czy dashboard istnieje ani kto go czyta. Dostęp to
+# rola REPORTER (grants w prod), a ochronę kolumn daje kontrakt na full_moon_reviews. url to placeholder.
 version: 2
 
 exposures:
@@ -18,5 +17,4 @@ exposures:
       - ref('full_moon_reviews')
 
     owner:
-      name: Analytics team
-      email: analytics@my-company.com
+      name: Piotr Maćkówka
