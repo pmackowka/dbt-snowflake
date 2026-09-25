@@ -54,3 +54,10 @@ vars:
   # macros/variable_test.sql - pozwala nadpisać ją z CLI (--vars) bez zmiany kodu makra,
   # patrz README/notatka sekcja 12.
   user_name: "PIOTR"
+
+snapshots:
+  snowflake_project:
+    # Adapter tworzy każdą tabelę jako transient (parse_model.is_transient: domyślnie True): bez
+    # Fail-safe, Time Travel maks. 1 dzień. Modele odbuduje się ze źródła, historii SCD2 nie -
+    # to jedyna kopia. Istniejąca tabela typu nie zmieni: snapshot jej nie odtwarza (CTAS ręcznie).
+    +transient: false
