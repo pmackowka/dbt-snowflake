@@ -4,10 +4,12 @@ dbt_packages/
 logs/
 .user.yml
 
-# Poświadczenia — w repo tylko profiles.yml.example
+# Poświadczenia — w repo tylko profiles.yml.example. Przy key-pair auth sekretem jest plik
+# klucza prywatnego, nie hasło w profilu - ignore to siatka na klucz wrzucony do folderu repo.
 profiles.yml
-service_account.json
-*.keyfile.json
+*.p8
+*.pem
+rsa_key*
 
 # Python
 __pycache__/
