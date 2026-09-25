@@ -106,7 +106,7 @@ COPY INTO raw_reviews
   FILE_FORMAT = (type = 'CSV' skip_header = 1 FIELD_OPTIONALLY_ENCLOSED_BY = '"');
 ```
 
-Rola `REPORTER` (odbiorca `post-hook` z `dbt_project.yml`, pod BI typu Preset/Superset — patrz `models/dashboards.yml`) jest opcjonalna do samego uruchomienia dbt; provisionuj ją tylko, jeśli faktycznie podłączasz narzędzie BI.
+Rola `REPORTER` (odbiorca `+grants` z `dbt_project.yml`, pod BI typu Preset/Superset — patrz `models/dashboards.yml`) jest potrzebna tylko przy `--target prod`: grants nadaje się wyłącznie tam, bo GRANT do nieistniejącej roli wywraca build. Dev działa bez niej.
 
 ### 2. Repo i środowisko Python
 
