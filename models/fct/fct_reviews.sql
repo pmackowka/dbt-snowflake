@@ -1,25 +1,26 @@
 {#
-	Fakt: recenzje Airbnb, z wygenerowanym surrogate key (bo źródło nie ma naturalnego klucza
-	głównego dla pojedynczej recenzji).
+	Fakt: recenzje. review_id to surrogate key, bo źródło nie ma klucza pojedynczej recenzji.
 
-	materialized='incremental' - fct_reviews to typowa tabela faktów, rosnąca z czasem (każda nowa
-	recenzja to nowy wiersz, stare recenzje się nie zmieniają) - przeliczanie całej historii przy
-	każdym dbt run (materializacja 'table') byłoby marnowaniem czasu i kredytów warehouse'u na
-	dane, które już raz policzono i które się nie zmienią.
+	incremental: recenzje tylko przybywają, a pełny rebuild co run to kredyty za dane już policzone.
+	unique_key='review_id': bez klucza MERGE nie ma warunku dopasowania i działa jak INSERT -
+	backfill zakresu, który już jest w tabeli, dopisałby duplikaty. Z kluczem ponowne wczytanie
+	wiersza to UPDATE. Siatką jest test unique na review_id (models/schema.yml).
+	Ryzyko: dwie identyczne recenzje (oferta, data, autor, tekst) dają ten sam klucz i Snowflake
+	przerywa MERGE (ERROR_ON_NONDETERMINISTIC_MERGE). Nie sprawdzone na danych.
 
-	on_schema_change='fail', NIE 'sync_all_columns' (jak w siostrzanym repo dbt-bigquery, model
-	stg_ecommerce__events.sql) - świadomie inny wybór: tam events to tabela WEWNĘTRZNA projektu,
-	tu src_reviews pochodzi z surowej tabeli raw_reviews, której schemat może się zmienić bez
-	uprzedzenia (np. przy kolejnym imporcie z S3 z innym zestawem kolumn). 'fail' celowo
-	PRZERYWA build zamiast po cichu dostosować schemat - błąd ma być widoczny od razu, a nie
-	ukryty za automatyczną synchronizacją, która mogłaby zamaskować realny problem ze źródłem.
+	on_schema_change='fail': src_reviews wybiera kolumny jawnie, więc zmiana w raw_reviews tu nie
+	dociera. 'fail' łapie zmianę kolumn w SAMYM modelu i wymusza świadome --full-refresh.
 #}
 {{
   config(
     materialized = 'incremental',
+    unique_key = 'review_id',
     on_schema_change='fail'
     )
 }}
+
+{# Okno wsteczne: recenzja dociągnięta później z datą <= MAX(review_date) nie przepada. #}
+{% set lookback_days = 3 %}
 
 WITH src_reviews AS (
   SELECT * FROM {{ ref('src_reviews') }}
@@ -31,25 +32,18 @@ FROM src_reviews
 WHERE review_text is not null
 {% if is_incremental() %}
   {#
-  	Dwie ścieżki inkrementalnego ładowania - wybór między nimi zależy od tego, czy użytkownik
-  	podał --vars przy wywołaniu dbt run:
-
-  	1) start_date/end_date podane -> ręczny backfill KONKRETNEGO zakresu dat, niezależnie od
-  	   tego, co już jest w tabeli. Przydatne np. gdy trzeba przeliczyć jeden miesiąc na nowo po
-  	   znalezieniu błędu w danych źródłowych, bez --full-refresh całej tabeli (który przeliczyłby
-  	   WSZYSTKO od zera, znacznie drożej i wolniej).
-  	2) brak --vars (domyślne zachowanie) -> zwykły przyrost: tylko recenzje nowsze niż
-  	   MAX(review_date) już obecny w tabeli.
-
-  	log(..., info=True) w obu gałęziach wypisuje na ekran, KTÓRA ścieżka się wykonała - przydatne
-  	przy debugowaniu, żeby nie zgadywać, czy --vars zostały poprawnie odczytane.
+  	--vars start_date/end_date: backfill konkretnego zakresu bez --full-refresh całej tabeli.
+  	Bez --vars: przyrost od MAX(review_date) minus okno. MERGE nadal skanuje cały cel - przy
+  	dużej tabeli dołożyć incremental_predicates z oknem >= lookback + dni przestoju. Za krótkie
+  	okno: po przerwie MERGE nie znajdzie istniejących wierszy i wstawi duplikaty.
+  	log(info=True) pokazuje, która ścieżka się wykonała.
   #}
   {% if var("start_date", False) and var("end_date", False) %}
     {{ log('Loading ' ~ this ~ ' incrementally (start_date: ' ~ var("start_date") ~ ', end_date: ' ~ var("end_date") ~ ')', info=True) }}
     AND review_date >= '{{ var("start_date") }}'
     AND review_date < '{{ var("end_date") }}'
   {% else %}
-    AND review_date > (select max(review_date) from {{ this }})
-    {{ log('Loading ' ~ this ~ ' incrementally (all missing dates)', info=True)}}
+    AND review_date >= (select dateadd(day, -{{ lookback_days }}, max(review_date)) from {{ this }})
+    {{ log('Loading ' ~ this ~ ' incrementally (all missing dates, lookback ' ~ lookback_days ~ ' days)', info=True)}}
   {% endif %}
 {% endif %}
