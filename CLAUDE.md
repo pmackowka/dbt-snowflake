@@ -1,6 +1,6 @@
 # CLAUDE.md — dbt-snowflake
 
-Projekt dbt Core (Snowflake) z kursu Udemy *The Complete dbt Bootcamp*, rozszerzony o własne dodatki. Dane: Airbnb (listings/hosts/reviews), ładowane z S3 do `AIRBNB.RAW`. Pełny opis i lista własnych rozszerzeń ponad materiał kursu → [README.md](README.md).
+Projekt dbt Core (Snowflake) zbudowany na bazie projektu szkoleniowego, rozszerzony o własne dodatki. Dane: Airbnb (listings/hosts/reviews), ładowane z S3 do `AIRBNB.RAW`. Pełny opis i setup → [README.md](README.md).
 
 ## Setup i komendy
 
@@ -36,11 +36,11 @@ Nazwa profilu i projektu: `snowflake_project` (NIE zmieniać na `dbt_snowflake` 
 
 ## Historia repo — ważne dla kontekstu
 
-To repo powstało 2026-09 z podziału większego monorepo `pmackowka/dbt` (dwa kursy dbt + kilka projektów firmowych). Siostrzane repo z pierwszego kursu (BigQuery, dataset e-commerce): [pmackowka/dbt-bigquery](https://github.com/pmackowka/dbt-bigquery), lokalnie `~/Documents/dev/dbt-bigquery` — ten sam wzorzec konsolidacji, nagłówków i README, warto trzymać oba repo spójne stylistycznie.
+To repo powstało 2026-09 z podziału większego monorepo `pmackowka/dbt` (dwa projekty szkoleniowe dbt + kilka projektów firmowych). Siostrzane repo z pierwszego projektu szkoleniowego (BigQuery, dataset e-commerce): [pmackowka/dbt-bigquery](https://github.com/pmackowka/dbt-bigquery), lokalnie `~/Documents/dev/dbt-bigquery` — ten sam wzorzec konsolidacji, nagłówków i README, warto trzymać oba repo spójne stylistycznie.
 
-Ten projekt to scalenie dwóch przejść tego samego kursu: nowsza wersja (dbt-snowflake 1.9.2, exposures, `documents/`) plus `assets/` i `macros/learn_variables.sql` ze starszej wersji, zachowane jako materiał referencyjny (nie duplikat do wyczyszczenia).
+Ten projekt to scalenie dwóch przejść tego samego materiału źródłowego: nowsza wersja (dbt-snowflake 1.9.2, exposures, `documents/`) plus `assets/` i `macros/learn_variables.sql` ze starszej wersji, zachowane jako materiał referencyjny (nie duplikat do wyczyszczenia).
 
-Notatki merytoryczne z kursu (Analyses/Hooks/Exposures, debugging `dbt-expectations`, logowanie, zmienne, Dagster) są w osobnym repo wiedzy, nie tutaj — `knowledge-base/wiki/Software/dbt/dbt-Snowflake-i-Orkiestracja-Dagster.md`.
+Notatki merytoryczne z pracy nad projektem (Analyses/Hooks/Exposures, debugging `dbt-expectations`, logowanie, zmienne, Dagster) są w osobnym repo wiedzy, nie tutaj — `knowledge-base/wiki/Software/dbt/dbt-Snowflake-i-Orkiestracja-Dagster.md`.
 
 ## Konwencje
 

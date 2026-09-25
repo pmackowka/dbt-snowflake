@@ -1,6 +1,6 @@
 # dbt na Snowflake — Airbnb pipeline
 
-Projekt dbt Core zbudowany w trakcie kursu Udemy *The Complete dbt Bootcamp* i rozszerzony o własne dodatki.
+Projekt dbt Core zbudowany na bazie projektu szkoleniowego i rozszerzony o własne dodatki.
 Dane: listings/hosts/reviews Airbnb, ładowane z S3 do Snowflake (`AIRBNB.RAW`).
 
 ## Struktura
@@ -19,16 +19,9 @@ analyses/             # zapytania eksploracyjne (dbt compile, bez materializacji
 assets/               # obrazy osadzane w dbt docs (asset-paths)
 ```
 
-## Co jest tu ponad materiał kursu
-
-- **Governance przez `post-hook`**: `GRANT SELECT ... TO ROLE REPORTER` na każdym modelu automatycznie, zamiast ręcznego nadawania uprawnień po każdym `dbt run`.
-- **`dbt_expectations` jako deep dive jakości danych** na `dim_listings_w_hosts`: porównanie liczby wierszy ze źródłem, kwantyle jako wykrywanie outlierów, `severity: warn` na wartościach ekstremalnych.
-- **Parametryzowany backfill** `fct_reviews` przez `--vars '{start_date: ..., end_date: ...}'` zamiast tylko "od ostatniego maksimum".
-- **Dwa warianty tego samego makra** logowania/zmiennych (`macros/logging.sql` + `macros/variable_test.sql`, `macros/learn_variables.sql`) zostawione celowo jako materiał referencyjny z dwóch przejść kursu.
-
 ## Setup
 
-Autoryzacja: **para kluczy RSA (key-pair)**, nie hasło — to metoda, której oficjalne repo tego kursu (`nordquant/complete-dbt-bootcamp-zero-to-hero`) używa do provisioningu użytkownika serwisowego `dbt` (`TYPE=SERVICE`, `RSA_PUBLIC_KEY`). Klucz prywatny nie wygasa jak sesja logowania i działa wszędzie bez ponownego uwierzytelniania.
+Autoryzacja: **para kluczy RSA (key-pair)**, nie hasło — standardowa metoda Snowflake dla użytkownika serwisowego (`TYPE=SERVICE`, `RSA_PUBLIC_KEY`). Klucz prywatny nie wygasa jak sesja logowania i działa wszędzie bez ponownego uwierzytelniania.
 
 ### 1. Snowflake — role, warehouse, użytkownik, import danych
 
@@ -77,7 +70,7 @@ GRANT ALL ON ALL TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM;
 GRANT ALL ON FUTURE TABLES IN SCHEMA AIRBNB.RAW TO ROLE TRANSFORM;
 ```
 
-**Import surowych danych z S3** (publiczny bucket kursu, `USE ROLE TRANSFORM; USE DATABASE AIRBNB; USE SCHEMA RAW;` najpierw):
+**Import surowych danych z S3** (publiczny bucket `s3://dbt-datasets`, `USE ROLE TRANSFORM; USE DATABASE AIRBNB; USE SCHEMA RAW;` najpierw):
 
 ```sql
 CREATE OR REPLACE TABLE raw_listings (
@@ -149,6 +142,6 @@ uv run dbt run --select fct_reviews --vars '{start_date: "2024-02-15 00:00:00", 
 
 ## Notatki (prywatne, tylko dla mnie)
 
-Pełne notatki merytoryczne z kursu (Analyses/Hooks/Exposures, debugging przez `dbt-expectations`, logowanie, zmienne, orkiestracja Dagster) są w moim prywatnym repo wiedzy: [dbt-Snowflake-i-Orkiestracja-Dagster.md](https://github.com/pmackowka/knowledge-base/blob/main/wiki/Software/dbt/dbt-Snowflake-i-Orkiestracja-Dagster.md).
+Pełne notatki merytoryczne z pracy nad tym projektem (Analyses/Hooks/Exposures, debugging przez `dbt-expectations`, logowanie, zmienne, orkiestracja Dagster) są w moim prywatnym repo wiedzy: [dbt-Snowflake-i-Orkiestracja-Dagster.md](https://github.com/pmackowka/knowledge-base/blob/main/wiki/Software/dbt/dbt-Snowflake-i-Orkiestracja-Dagster.md).
 
 Ten link **działa tylko na moim koncie GitHub** — repo jest prywatne i takie zostanie. Dla każdego innego zwraca 404, to celowe, nie błąd.
