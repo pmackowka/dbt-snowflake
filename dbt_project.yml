@@ -1,17 +1,13 @@
+# Konfiguracja projektu: materializacja per folder, grants dla REPORTER w prod, snapshoty
+# permanentne, zmienna user_name.
 
-# Główny plik konfiguracyjny projektu dbt: nazwa, profil, ścieżki folderów, domyślna
-# materializacja PER FOLDER (view/table/ephemeral), grants dla roli REPORTER w prod
-# (patrz README.md -> Setup -> 1. Snowflake) i zmienna user_name (macros/*variable*).
-
-# Nazwa projektu - tylko małe litery i podkreślenia, musi się zgadzać z kluczem najwyższego
-# poziomu w profiles.yml (patrz profil poniżej).
+# Nie 'dbt_snowflake' - ta nazwa koliduje z wewnętrznym pakietem makr adaptera.
 name: 'snowflake_project'
 version: '1.0.0'
 
-# Profil, którego dbt użyje do połączenia z bazą - musi mieć odpowiednik w profiles.yml.
+# Musi mieć odpowiednik (klucz najwyższego poziomu) w profiles.yml.
 profile: 'snowflake_project'
 
-# Ścieżki do folderów z poszczególnymi typami plików projektu.
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -24,35 +20,29 @@ clean-targets:         # foldery usuwane przez `dbt clean`
   - "target"
   - "dbt_packages"
 
-
-# Konfiguracja domyślnej materializacji per folder - nadpisywalna per model przez
-# {{ config(...) }} w samym pliku .sql (patrz np. models/fct/fct_reviews.sql).
+# Materializacja per folder; config() w pliku .sql ma pierwszeństwo (fct_reviews, full_moon_reviews).
 models:
   snowflake_project:
-    # view jako domyślna materializacja PROJEKTU (nie table jak w siostrzanym repo
-    # dbt-bigquery): świadomie inny punkt startowy - większość modeli w tym projekcie to proste
-    # przekształcenia bez kosztownych agregacji, więc przeliczanie na bieżąco (widok) jest tańsze
-    # niż trzymanie i regularne nadpisywanie fizycznej tabeli, której nikt nie musi czytać wprost.
+    # view to default tylko dla modeli spoza dim/ i src/ - dziś żaden z niego nie korzysta
+    # (manifest: dim = table, src = ephemeral, fct i mart nadpisują w config()). Nowy model
+    # w nowym folderze startuje więc jako widok: bez storage, płaci się dopiero przy odczycie.
     +materialized: view
     # Natywne grants zamiast post-hooka z GRANT: dbt porównuje stan z deklaracją i odbiera
     # uprawnienia dodane ręcznie. Tylko prod - GRANT do nieistniejącej roli wywraca build, a dev
     # nie potrzebuje BI. Kto czyta, rozstrzyga rola REPORTER w Snowflake, nie dbt.
     +grants: "{{ {'select': ['REPORTER']} if target.name == 'prod' else {} }}"
     dim:
-      # table dla wymiarów: dim_listings_w_hosts i dim_hosts_cleansed są odpytywane bezpośrednio
-      # przez dashboardy (patrz models/dashboards.yml) - fizyczna tabela czyta się szybciej niż
-      # widok przeliczany od zera przy każdym zapytaniu BI.
+      # table: dim_listings_w_hosts czyta dashboard (models/dashboards.yml), a *_cleansed czytają
+      # join w w_hosts i kilkanaście testów - widok liczyłby to samo przy każdym odczycie.
+      # Tabele są transient (default adaptera) - odbudowują się ze źródła, Fail-safe zbędny.
       +materialized: table
     src:
-      # ephemeral dla staging: modele src_* to tylko rename kolumn z surowych tabel (patrz
-      # models/src/*.sql), używane wyłącznie jako CTE wewnątrz modeli dim/fct - nie ma sensu
-      # trzymać ich jako osobny obiekt w bazie, skoro nikt nie odpytuje ich wprost.
+      # ephemeral: src_* to rename kolumn, wklejany jako CTE do dim/fct - bez obiektu w bazie.
       +materialized: ephemeral
 
 vars:
-  # Wartość domyślna dla var("user_name", ...) używanego w macros/logging.sql i
-  # macros/variable_test.sql - pozwala nadpisać ją z CLI (--vars) bez zmiany kodu makra,
-  # patrz README/notatka sekcja 12.
+  # Default dla var("user_name") w macros/variable_test.sql i learn_variables.sql - nadpisywalny
+  # przez --vars bez zmiany kodu makra.
   user_name: "PIOTR"
 
 snapshots:
