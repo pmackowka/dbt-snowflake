@@ -114,3 +114,31 @@ models:
           - accepted_values:
               arguments:
                 values: ['positive', 'neutral', 'negative']
+
+  - name: full_moon_reviews
+    description: Recenzje z flagą nocy po pełni - publiczny mart pod executive_dashboard.
+    config:
+      # Bramka, ale wąska: dbt przed buildem porównuje nazwy i typy kolumn (kolejność z YAML =
+      # kolejność w tabeli) i pada przy rozjeździe. Snowflake egzekwuje z constraintów tylko
+      # NOT NULL - unikalność review_id pilnuje test na fct_reviews, nie kontrakt.
+      contract:
+        enforced: true
+    columns:
+      - name: review_id
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: listing_id
+        data_type: number
+        constraints:
+          - type: not_null
+      - name: review_date
+        data_type: timestamp_ntz
+      - name: reviewer_name
+        data_type: varchar
+      - name: review_text
+        data_type: varchar
+      - name: review_sentiment
+        data_type: varchar
+      - name: is_full_moon
+        data_type: varchar
