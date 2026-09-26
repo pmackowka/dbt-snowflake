@@ -19,6 +19,70 @@ analyses/             # zapytania eksploracyjne (dbt compile, bez materializacji
 assets/               # obrazy osadzane w dbt docs (asset-paths)
 ```
 
+## Lineage (DAG)
+
+Co z czym łączy się przez `source()` i `ref()`. Krawędzie wygenerowane z `target/manifest.json`. W nawiasie materializacja.
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false, "padding": 16}}}%%
+flowchart LR
+    subgraph raw["Źródła: AIRBNB.RAW"]
+        s_listings[("listings (raw_listings)")]
+        s_hosts[("hosts (raw_hosts)")]
+        s_reviews[("reviews (raw_reviews)<br/>freshness")]
+    end
+
+    subgraph src["src"]
+        src_listings["src_listings<br/>(ephemeral: wklejany jako CTE)"]
+        src_hosts["src_hosts<br/>(ephemeral: wklejany jako CTE)"]
+        src_reviews["src_reviews<br/>(ephemeral: wklejany jako CTE)"]
+    end
+
+    subgraph dim["dim"]
+        dim_listings["dim_listings_cleansed<br/>(table)"]
+        dim_hosts["dim_hosts_cleansed<br/>(table)"]
+        dim_w_hosts["dim_listings_w_hosts<br/>(table)"]
+    end
+
+    subgraph fct["fct"]
+        fct_reviews["fct_reviews<br/>(incremental, unique_key review_id)"]
+    end
+
+    subgraph mart["mart"]
+        full_moon["full_moon_reviews<br/>(table, kontrakt)"]
+    end
+
+    seed["seed_full_moon_dates<br/>(seed)"]
+    scd_listings["scd_raw_listings<br/>(snapshot SCD2, brak konsumenta)"]
+    scd_hosts["scd_raw_hosts<br/>(snapshot SCD2, brak konsumenta)"]
+    dashboard(["executive_dashboard<br/>(exposure)"])
+
+    s_listings --> src_listings
+    s_hosts --> src_hosts
+    s_reviews --> src_reviews
+    s_listings --> scd_listings
+    s_hosts --> scd_hosts
+
+    src_listings --> dim_listings
+    src_hosts --> dim_hosts
+    dim_listings --> dim_w_hosts
+    dim_hosts --> dim_w_hosts
+
+    src_reviews --> fct_reviews
+    fct_reviews --> full_moon
+    seed --> full_moon
+
+    dim_w_hosts --> dashboard
+    full_moon --> dashboard
+
+    classDef deadEnd stroke-dasharray: 5 5
+    class scd_listings,scd_hosts deadEnd
+```
+
+Linia przerywana w ramce oznacza ślepą uliczkę: obiekt się buduje, ale nic go nie czyta. Oba snapshoty SCD2 zbierają historię obok obu gałęzi dashboardu — żaden model ich nie `ref()`-uje. `executive_dashboard` to exposure: czyta dwie niezależne gałęzie, wymiary ofert i mart z recenzjami.
+
+Podgląd gałęzi z terminala: `uv run dbt ls -s +exposure:executive_dashboard --profiles-dir .` (wszystko pod dashboardem) albo `-s +full_moon_reviews` (przodkowie martu).
+
 ## Setup
 
 Autoryzacja: **para kluczy RSA (key-pair)**, nie hasło — standardowa metoda Snowflake dla użytkownika serwisowego (`TYPE=SERVICE`, `RSA_PUBLIC_KEY`). Klucz prywatny nie wygasa jak sesja logowania i działa wszędzie bez ponownego uwierzytelniania.
