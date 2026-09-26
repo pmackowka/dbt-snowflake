@@ -83,6 +83,69 @@ Linia przerywana w ramce oznacza ślepą uliczkę: obiekt się buduje, ale nic g
 
 Podgląd gałęzi z terminala: `uv run dbt ls -s +exposure:executive_dashboard --profiles-dir .` (wszystko pod dashboardem) albo `-s +full_moon_reviews` (przodkowie martu).
 
+## Komendy dbt
+
+Komendy odpalane z katalogu repo, z prefiksem `uv run` (albo bez niego w aktywnym `.venv`). Flaga `--profiles-dir .` nie jest potrzebna: dbt najpierw szuka `profiles.yml` w bieżącym katalogu.
+
+### Podstawowe komendy
+
+| Komenda | Co robi | Na tabelach tego projektu | Baza? |
+|---|---|---|---|
+| `dbt debug` | Sprawdza profil, zmienne i połączenie | czy `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER` i klucz RSA działają, a rola `TRANSFORM` widzi `COMPUTE_WH` | tak |
+| `dbt deps` | Instaluje pakiety z `packages.yml` do `dbt_packages/` | `dbt_utils`, `dbt_expectations` (+ `dbt_date` jako zależność pośrednia) | nie |
+| `dbt parse` | Buduje graf i waliduje YAML, bez SQL-a | szybka kontrola składni; **nie** sprawdza typów kontraktu `full_moon_reviews` ani kolumn w `no_nulls_in_dim_listings` | nie |
+| `dbt ls -s +full_moon_reviews` | Wypisuje węzły pasujące do selektora | 5 węzłów: źródło `reviews`, `src_reviews`, `fct_reviews`, seed i sam mart | nie |
+| `dbt compile -s fct_reviews` | Renderuje Jinja do czystego SQL w `target/compiled/` | widać, którą ścieżkę wybrał `is_incremental()`, i wklejone CTE `src_reviews` | tak |
+| `dbt show -s full_moon_reviews --limit 10` | Wykonuje SELECT modelu i pokazuje wynik, bez zapisu tabeli | podgląd flagi `is_full_moon` przed buildem | tak |
+| `dbt seed` | Ładuje CSV z `seeds/` do tabel | `seed_full_moon_dates` (272 daty pełni) | tak |
+| `dbt snapshot` | Porównuje źródło z historią i dopisuje zmiany (SCD2) | `scd_raw_listings` i `scd_raw_hosts` w `DEV_SNAPSHOTS` (prod: `PROD_SNAPSHOTS`) | tak |
+| `dbt run -s dim_hosts_cleansed` | Buduje modele (tabele, widoki, incremental), **bez testów** | jedna tabela `DEV.dim_hosts_cleansed` | tak |
+| `dbt run -s fct_reviews --full-refresh` | Buduje incremental od zera, ignorując istniejący stan | po zmianie kolumn albo logiki filtra recenzji | tak |
+| `dbt test -s dim_listings_cleansed` | Uruchamia testy na zbudowanych tabelach | 10 testów, w tym `relationships` z `fct_reviews` i singular `consistent_created_at` | tak |
+| `dbt build -s +full_moon_reviews` | seed + snapshot + run + test w kolejności DAG-a, testy **zaraz po** każdym modelu | seed, `fct_reviews`, mart i 7 testów; nieudany test `error` zatrzymuje mart | tak |
+| `dbt source freshness` | Sprawdza świeżość źródeł (`error_after`) | tylko `reviews` ma zdefiniowaną świeżość; na jednorazowym imporcie zawsze `error` | tak |
+| `dbt retry` | Powtarza tylko węzły, które padły w ostatnim przebiegu | po awarii nie trzeba budować wszystkiego od nowa | tak |
+| `dbt docs generate` + `dbt docs serve` | Buduje i serwuje dokumentację z lineage i opisami | opisy z `schema.yml`, `doc()` dla `minimum_nights`, strona startowa z `assets/`, exposure w lineage | tak (katalog) |
+| `dbt run-operation learn_logging` | Wywołuje makro ręcznie | makro tylko loguje; "Call your dad!" wypisuje się dwa razy, bo `--` nie wyłącza Jinja | nie (to makro) |
+| `dbt clean` | Usuwa `target/` i `dbt_packages/` | reset artefaktów po dziwnych błędach kompilacji | nie |
+
+`compile` wymaga połączenia nawet dla prostego modelu: dbt na starcie czyta z bazy stan relacji (tego potrzebuje m.in. `is_incremental()`).
+
+### Selektory (`-s`)
+
+| Zapis | Znaczenie | Przykład z tego projektu |
+|---|---|---|
+| `model` | tylko ten węzeł | `-s full_moon_reviews` - 1 węzeł, mart nie ma testów (pilnuje go kontrakt) |
+| `+model` | węzeł i wszystko, od czego zależy | `-s +full_moon_reviews` - `src_reviews`, `fct_reviews`, seed, źródło `reviews` |
+| `model+` | węzeł i wszystko, co od niego zależy | `-s fct_reviews+` - `fct_reviews`, `full_moon_reviews`, exposure `executive_dashboard`, analiza `full_moon_no_sleep` |
+| `path:...` | wszystko w folderze | `-s path:models/dim` - 3 wymiary + 20 testów |
+| `--exclude` | wyklucza węzły | `-s path:models/dim --exclude dim_listings_w_hosts` - 2 wymiary + 14 testów |
+
+Test wchodzi do selekcji, gdy wybrany jest **którykolwiek** z jego rodziców (`indirect_selection: eager`). Dlatego `-s +full_moon_reviews` łapie też `relationships` i `consistent_created_at`, które czytają `dim_listings_cleansed` spoza tej gałęzi.
+
+### Kolejność pracy
+
+**Dlaczego `build`, a nie `run` + `test`:** `dbt run` buduje wszystko, a dopiero potem `dbt test` sprawdza dane. Zduplikowany `review_id` w `fct_reviews` trafia wtedy do `full_moon_reviews` i na dashboard, zanim ktokolwiek to zauważy. `dbt build` testuje każdy model zaraz po zbudowaniu, a test na `error` zatrzymuje modele zależne.
+
+**Zmiana modelu w dev** (np. edycja `dim_listings_cleansed`):
+1. `dbt parse` - czy YAML i graf są poprawne (sekundy, bez bazy).
+2. `dbt compile -s dim_listings_cleansed` - czy SQL wygląda tak, jak zakładasz.
+3. `dbt show -s dim_listings_cleansed --limit 10` - czy wynik ma sens.
+4. `dbt build -s dim_listings_cleansed+` - buduje model **i** `dim_listings_w_hosts` z 16 testami. Model zależny też, bo test liczby wierszy na `dim_listings_w_hosts` wykryje zgubione oferty dopiero przy jego budowie.
+
+**Zmiana w `fct_reviews`** (model incremental):
+1. `dbt build -s fct_reviews+` - MERGE po `review_id` z 3-dniowym oknem, potem mart z kontraktem.
+2. Zmiana kolumn: `on_schema_change='fail'` przerwie zwykły run - wtedy `--full-refresh`. Zmiana logiki filtra też go wymaga, bo nowa logika nie przeliczy się na historii.
+
+**Przed commitem / PR:**
+1. `dbt build` na dev (całość albo `-s <zmieniony_model>+`). Zielony `dbt parse` nie wystarcza, bo nie widzi typów kontraktu ani kolumn czytanych z bazy (`no_nulls_in_columns`).
+
+**Przebieg produkcyjny** (orkiestracja, `--target prod`):
+1. `dbt deps`
+2. `dbt source freshness --target prod` - kod wyjścia 1 = stop, nie budujemy na starych danych.
+3. `dbt build --target prod` - seed, snapshot, modele i testy w jednym przebiegu.
+4. Po awarii: `dbt retry --target prod`.
+
 ## Setup
 
 Autoryzacja: **para kluczy RSA (key-pair)**, nie hasło — standardowa metoda Snowflake dla użytkownika serwisowego (`TYPE=SERVICE`, `RSA_PUBLIC_KEY`). Klucz prywatny nie wygasa jak sesja logowania i działa wszędzie bez ponownego uwierzytelniania.
