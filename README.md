@@ -317,3 +317,7 @@ uv run dbt run --select fct_reviews --vars '{start_date: "2024-02-15 00:00:00", 
 Pełne notatki merytoryczne z pracy nad tym projektem (Analyses/Hooks/Exposures, debugging przez `dbt-expectations`, logowanie, zmienne, orkiestracja Dagster) są w moim prywatnym repo wiedzy: [dbt-Snowflake-i-Orkiestracja-Dagster.md](https://github.com/pmackowka/knowledge-base/blob/main/wiki/Software/dbt/dbt-Snowflake-i-Orkiestracja-Dagster.md).
 
 Ten link **działa tylko na moim koncie GitHub** — repo jest prywatne i takie zostanie. Dla każdego innego zwraca 404, to celowe, nie błąd.
+
+## Licencja
+
+Własny kod i dokumentacja — [MIT](LICENSE). Fragmenty pochodzące z projektu szkoleniowego, na którym bazuje ten projekt pozostają własnością ich autorów i podlegają ich warunkom; licencja MIT ich nie obejmuje.
